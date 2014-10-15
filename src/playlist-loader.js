@@ -58,6 +58,8 @@
         haveMetadata = function(error, xhr, url) {
           var parser, refreshDelay, update;
 
+          loader.bandwidth = request && request.bandwidth || xhr && xhr.bandwidth;
+
           // any in-flight request is now finished
           request = null;
 
@@ -65,6 +67,7 @@
             loader.error = {
               status: xhr.status,
               message: 'HLS playlist request error at URL: ' + url,
+              responseText: xhr.responseText,
               code: (xhr.status >= 500) ? 4 : 2
             };
             return loader.trigger('error');
@@ -74,6 +77,7 @@
 
           parser = new videojs.m3u8.Parser();
           parser.push(xhr.responseText);
+          parser.end();
           parser.manifest.uri = url;
 
           // merge this playlist into the master
@@ -225,6 +229,7 @@
           loader.error = {
             status: this.status,
             message: 'HLS playlist request error at URL: ' + srcUrl,
+            responseText: this.responseText,
             code: 2 // MEDIA_ERR_NETWORK
           };
           return loader.trigger('error');
@@ -232,6 +237,7 @@
 
         parser = new videojs.m3u8.Parser();
         parser.push(this.responseText);
+        parser.end();
 
         loader.state = 'HAVE_MASTER';
 

@@ -240,6 +240,7 @@
   test('emits an error if a media refresh fails', function() {
     var
       errors = 0,
+      errorResponseText = 'custom error message',
       loader = new videojs.Hls.PlaylistLoader('live.m3u8');
 
     loader.on('error', function() {
@@ -251,10 +252,11 @@
                            '#EXTINF:10,\n' +
                            '0.ts\n');
     clock.tick(10 * 1000); // trigger a refresh
-    requests.pop().respond(500);
+    requests.pop().respond(500, null, errorResponseText);
 
     strictEqual(errors, 1, 'emitted an error');
     strictEqual(loader.error.status, 500, 'captured the status code');
+    strictEqual(loader.error.responseText, errorResponseText, 'captured the responseText');
   });
 
   test('switches media playlists when requested', function() {
@@ -550,5 +552,16 @@
     // trigger a no-op switch
     loader.media('low.m3u8');
     strictEqual(mediaChanges, 2, 'ignored a no-op media change');
+  });
+
+  test('does not misintrepret playlists missing newlines at the end', function() {
+    var loader = new videojs.Hls.PlaylistLoader('media.m3u8');
+    requests.shift().respond(200, null,
+                             '#EXTM3U\n' +
+                             '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                             '#EXTINF:10,\n' +
+                             'low-0.ts\n' +
+                             '#EXT-X-ENDLIST'); // no newline
+     ok(loader.media().endList, 'flushed the final line of input');
   });
 })(window);

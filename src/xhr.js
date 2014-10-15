@@ -2,7 +2,7 @@
   /**
    * Creates and sends an XMLHttpRequest.
    * TODO - expose video.js core's XHR and use that instead
-   * 
+   *
    * @param options {string | object} if this argument is a string, it
    * is intrepreted as a URL and a simple GET request is
    * inititated. If it is an object, it should contain a `url`
@@ -34,6 +34,7 @@
     request = new window.XMLHttpRequest();
     request.open(options.method, url);
     request.url = url;
+    request.requestTime = new Date().getTime();
 
     if (options.responseType) {
       request.responseType = options.responseType;
@@ -42,20 +43,12 @@
       request.withCredentials = true;
     }
     if (options.timeout) {
-      if (request.timeout === 0) {
-        request.timeout = options.timeout;
-        request.ontimeout = function() {
+      abortTimeout = window.setTimeout(function() {
+        if (request.readyState !== 4) {
           request.timedout = true;
-        };
-      } else {
-        // polyfill XHR2 by aborting after the timeout
-        abortTimeout = window.setTimeout(function() {
-          if (request.readyState !== 4) {
-            request.timedout = true;
-            request.abort();
-          }
-        }, options.timeout);
-      }
+          request.abort();
+        }
+      }, options.timeout);
     }
 
     request.onreadystatechange = function() {
@@ -75,6 +68,13 @@
       // request aborted or errored
       if (this.status >= 400 || this.status === 0) {
         return callback.call(this, true, url);
+      }
+
+      if (this.response) {
+        this.responseTime = new Date().getTime();
+        this.roundTripTime = this.responseTime - this.requestTime;
+        this.bytesReceived = this.response.byteLength || this.response.length;
+        this.bandwidth = parseInt((this.bytesReceived / this.roundTripTime) * 8 * 1000,10);
       }
 
       return callback.call(this, false, url);
